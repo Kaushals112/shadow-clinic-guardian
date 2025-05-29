@@ -70,9 +70,9 @@ const AdminDashboard = () => {
     try {
       await trackUserActivity({
         action: 'admin_search',
-        query: searchQuery,
         userId: user?.id,
-        timestamp: new Date()
+        timestamp: new Date(),
+        data: { searchQuery }
       });
 
       // VULNERABILITY: Rendering unsanitized HTML

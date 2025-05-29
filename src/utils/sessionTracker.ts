@@ -1,3 +1,4 @@
+
 import { apiClient } from './apiClient';
 
 interface ActivityData {
@@ -12,6 +13,7 @@ interface ActivityData {
   email?: string;
   reason?: string;
   error?: string;
+  query?: string; // Added query property
   data?: any;
 }
 
