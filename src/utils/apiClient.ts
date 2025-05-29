@@ -1,39 +1,16 @@
 
-import axios from 'axios';
+import { supabase } from '@/integrations/supabase/client';
 import { trackPotentialAttack } from './sessionTracker';
 
-// Create axios instance
-export const apiClient = axios.create({
-  baseURL: process.env.NODE_ENV === 'production' 
-    ? 'https://your-honeypot-backend.com/api' 
-    : 'http://localhost:3001/api',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  }
-});
-
-// Request interceptor to add auth token and track requests
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    // Add session ID to all requests
-    const sessionId = localStorage.getItem('sessionId');
-    if (sessionId) {
-      config.headers['X-Session-ID'] = sessionId;
-    }
-
+// Simulate API client for honeypot functionality
+export const apiClient = {
+  async post(endpoint: string, data: any) {
     // Track API calls for honeypot analysis
     const requestData = {
-      method: config.method?.toUpperCase(),
-      url: config.url,
+      method: 'POST',
+      url: endpoint,
       timestamp: new Date(),
-      headers: config.headers,
-      data: config.data
+      data: data
     };
 
     // Store request for potential analysis
@@ -44,43 +21,159 @@ apiClient.interceptors.request.use(
     }
     localStorage.setItem('apiLogs', JSON.stringify(apiLogs));
 
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Response interceptor to handle errors and track responses
-apiClient.interceptors.response.use(
-  (response) => {
-    // Track successful responses
-    return response;
-  },
-  async (error) => {
-    // Track potential attacks based on error patterns
-    if (error.response?.status === 401) {
-      await trackPotentialAttack('unauthorized_access', {
-        url: error.config?.url,
-        method: error.config?.method,
+    // Simulate API responses for different endpoints
+    try {
+      if (endpoint === '/auth/login') {
+        return this.handleLogin(data);
+      } else if (endpoint === '/auth/register') {
+        return this.handleRegister(data);
+      } else if (endpoint === '/auth/logout') {
+        return this.handleLogout(data);
+      } else {
+        // Default response for other endpoints
+        return {
+          data: {
+            success: true,
+            message: 'Request processed'
+          }
+        };
+      }
+    } catch (error) {
+      await trackPotentialAttack('api_error', {
+        endpoint,
+        error: error,
         timestamp: new Date()
       });
+      throw error;
+    }
+  },
+
+  async get(endpoint: string) {
+    // Track GET requests
+    const requestData = {
+      method: 'GET',
+      url: endpoint,
+      timestamp: new Date()
+    };
+
+    const apiLogs = JSON.parse(localStorage.getItem('apiLogs') || '[]');
+    apiLogs.push(requestData);
+    localStorage.setItem('apiLogs', JSON.stringify(apiLogs));
+
+    // Simulate responses
+    if (endpoint.includes('/admin/stats')) {
+      return {
+        data: {
+          totalUsers: 25,
+          totalBookings: 150,
+          activeSessions: 10,
+          suspiciousActivities: 3
+        }
+      };
+    } else if (endpoint.includes('/admin/logs')) {
+      const logs = JSON.parse(localStorage.getItem('activityLogs') || '[]');
+      return { data: logs.slice(-50) };
     }
 
-    if (error.response?.status === 403) {
-      await trackPotentialAttack('forbidden_access', {
-        url: error.config?.url,
-        method: error.config?.method,
-        timestamp: new Date()
+    return { data: [] };
+  },
+
+  async handleLogin(credentials: any) {
+    // Simulate authentication with Supabase
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password
       });
-    }
 
-    // Handle token expiration
-    if (error.response?.status === 401 && error.response?.data?.message === 'Token expired') {
-      localStorage.removeItem('authToken');
-      window.location.href = '/login';
-    }
+      if (error) {
+        return {
+          data: {
+            success: false,
+            message: error.message
+          }
+        };
+      }
 
-    return Promise.reject(error);
+      return {
+        data: {
+          success: true,
+          token: data.session?.access_token,
+          user: {
+            id: data.user?.id,
+            name: data.user?.user_metadata?.name || 'User',
+            email: data.user?.email,
+            role: data.user?.user_metadata?.role || 'patient'
+          }
+        }
+      };
+    } catch (error) {
+      return {
+        data: {
+          success: false,
+          message: 'Authentication failed'
+        }
+      };
+    }
+  },
+
+  async handleRegister(userData: any) {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          data: {
+            name: userData.name,
+            phone: userData.phone,
+            age: userData.age,
+            gender: userData.gender,
+            role: 'patient'
+          }
+        }
+      });
+
+      if (error) {
+        return {
+          data: {
+            success: false,
+            message: error.message
+          }
+        };
+      }
+
+      return {
+        data: {
+          success: true,
+          message: 'Registration successful'
+        }
+      };
+    } catch (error) {
+      return {
+        data: {
+          success: false,
+          message: 'Registration failed'
+        }
+      };
+    }
+  },
+
+  async handleLogout(data: any) {
+    try {
+      await supabase.auth.signOut();
+      return {
+        data: {
+          success: true,
+          message: 'Logged out successfully'
+        }
+      };
+    } catch (error) {
+      return {
+        data: {
+          success: false,
+          message: 'Logout failed'
+        }
+      };
+    }
   }
-);
+};

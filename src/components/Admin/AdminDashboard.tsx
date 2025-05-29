@@ -11,13 +11,10 @@ import {
   Shield, 
   AlertTriangle, 
   Activity,
-  Database,
-  FileText,
   Search,
   Download
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { apiClient } from '@/utils/apiClient';
 import { trackUserActivity, trackPotentialAttack } from '@/utils/sessionTracker';
 
 const AdminDashboard = () => {
@@ -47,14 +44,20 @@ const AdminDashboard = () => {
     try {
       setLoading(true);
       
-      // Fetch dashboard statistics
-      const [statsResponse, logsResponse] = await Promise.all([
-        apiClient.get('/admin/stats'),
-        apiClient.get('/admin/logs?limit=50')
-      ]);
+      // Load from localStorage for now (in real app, would be from backend)
+      const activityLogs = JSON.parse(localStorage.getItem('activityLogs') || '[]');
+      const suspiciousLogs = activityLogs.filter((log: any) => 
+        log.action.includes('suspicious') || log.action.includes('attack')
+      );
 
-      setStats(statsResponse.data);
-      setLogs(logsResponse.data);
+      setStats({
+        totalUsers: 25,
+        totalBookings: 150,
+        activeSessions: activityLogs.length,
+        suspiciousActivities: suspiciousLogs.length
+      });
+      
+      setLogs(activityLogs.slice(-50));
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
@@ -72,11 +75,11 @@ const AdminDashboard = () => {
         timestamp: new Date()
       });
 
-      // VULNERABILITY: Direct query injection without sanitization
-      const response = await apiClient.get(`/admin/search?q=${searchQuery}&vulnerable=true`);
-      
       // VULNERABILITY: Rendering unsanitized HTML
-      document.getElementById('searchResults')!.innerHTML = response.data.html;
+      const searchResults = document.getElementById('searchResults');
+      if (searchResults) {
+        searchResults.innerHTML = `<p>Search results for: ${searchQuery}</p>`;
+      }
       
       // Track potential XSS attempt
       if (searchQuery.includes('<script>') || searchQuery.includes('javascript:')) {
@@ -94,9 +97,6 @@ const AdminDashboard = () => {
   // INTENTIONAL VULNERABILITY: SQL Injection in user management
   const handleUserLookup = async (userId: string) => {
     try {
-      // VULNERABILITY: Direct SQL query construction
-      const response = await apiClient.get(`/admin/users/${userId}?direct_sql=true`);
-      
       // Track potential SQL injection attempt
       if (userId.includes("'") || userId.includes(';') || userId.includes('--')) {
         await trackPotentialAttack('sql_injection_attempt', {
@@ -106,7 +106,7 @@ const AdminDashboard = () => {
         });
       }
 
-      return response.data;
+      console.log('User lookup attempted with:', userId);
     } catch (error) {
       console.error('User lookup error:', error);
     }
@@ -120,15 +120,12 @@ const AdminDashboard = () => {
         timestamp: new Date()
       });
 
-      const response = await apiClient.get('/admin/export-logs', {
-        responseType: 'blob'
-      });
-
-      const blob = new Blob([response.data], { type: 'text/csv' });
+      const logs = localStorage.getItem('activityLogs') || '[]';
+      const blob = new Blob([logs], { type: 'application/json' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `aiims_security_logs_${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `aiims_security_logs_${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -241,7 +238,7 @@ const AdminDashboard = () => {
                   </Button>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Advanced search supports HTML tags and JavaScript for detailed filtering
+                  Advanced search supports HTML tags for detailed filtering
                 </p>
               </div>
 
