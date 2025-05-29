@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -65,11 +64,9 @@ const Header = () => {
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <img 
-              src="/api/placeholder/60/60" 
-              alt="AIIMS Logo" 
-              className="h-16 w-16"
-            />
+            <div className="h-16 w-16 bg-blue-900 rounded-full flex items-center justify-center">
+              <span className="text-white font-bold text-xl">AIIMS</span>
+            </div>
             <div>
               <h1 className="text-2xl font-bold text-blue-900">
                 All India Institute of Medical Sciences
@@ -98,15 +95,6 @@ const Header = () => {
                       <span>Admin</span>
                     </Button>
                   )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate('/profile')}
-                    className="flex items-center space-x-1"
-                  >
-                    <User className="h-4 w-4" />
-                    <span>Profile</span>
-                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -141,34 +129,34 @@ const Header = () => {
         <nav className="mt-4 border-t pt-4">
           <ul className="flex space-x-8">
             <li>
-              <Link to="/" className="text-blue-700 hover:text-blue-900 font-medium">
+              <Button variant="link" onClick={() => navigate('/')} className="text-blue-700 hover:text-blue-900 font-medium p-0">
                 Home
-              </Link>
+              </Button>
             </li>
             <li>
-              <Link to="/about" className="text-blue-700 hover:text-blue-900 font-medium">
+              <Button variant="link" onClick={() => navigate('/about')} className="text-blue-700 hover:text-blue-900 font-medium p-0">
                 About AIIMS
-              </Link>
+              </Button>
             </li>
             <li>
-              <Link to="/departments" className="text-blue-700 hover:text-blue-900 font-medium">
+              <Button variant="link" onClick={() => navigate('/departments')} className="text-blue-700 hover:text-blue-900 font-medium p-0">
                 Departments
-              </Link>
+              </Button>
             </li>
             <li>
-              <Link to="/doctors" className="text-blue-700 hover:text-blue-900 font-medium">
+              <Button variant="link" onClick={() => navigate('/doctors')} className="text-blue-700 hover:text-blue-900 font-medium p-0">
                 Our Doctors
-              </Link>
+              </Button>
             </li>
             <li>
-              <Link to="/appointments" className="text-blue-700 hover:text-blue-900 font-medium">
+              <Button variant="link" onClick={() => navigate('/appointments')} className="text-blue-700 hover:text-blue-900 font-medium p-0">
                 Book Appointment
-              </Link>
+              </Button>
             </li>
             <li>
-              <Link to="/contact" className="text-blue-700 hover:text-blue-900 font-medium">
+              <Button variant="link" onClick={() => navigate('/contact')} className="text-blue-700 hover:text-blue-900 font-medium p-0">
                 Contact Us
-              </Link>
+              </Button>
             </li>
           </ul>
         </nav>

@@ -6,11 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Eye, EyeOff, Shield, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, Shield, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { trackUserActivity } from '@/utils/sessionTracker';
 import { useNavigate } from 'react-router-dom';
-import Header from '@/components/Layout/Header';
 
 const RegisterForm = () => {
   const [formData, setFormData] = useState({
@@ -157,14 +156,14 @@ const RegisterForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="container mx-auto px-4">
         <Card className="w-full max-w-2xl mx-auto">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4">
-              <img src="/api/placeholder/80/80" alt="AIIMS Logo" className="h-20 w-20 mx-auto" />
+              <div className="h-20 w-20 mx-auto bg-blue-900 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-2xl">AIIMS</span>
+              </div>
             </div>
             <CardTitle className="text-2xl font-bold text-blue-900">
               Register for AIIMS Patient Portal
@@ -355,13 +354,24 @@ const RegisterForm = () => {
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                Already have an account?{' '}
-                <Button variant="link" className="p-0" onClick={() => navigate('/login')}>
-                  Sign in here
-                </Button>
-              </p>
+            <div className="mt-6 space-y-4">
+              <div className="text-center">
+                <p className="text-sm text-gray-600">
+                  Already have an account?{' '}
+                  <Button variant="link" className="p-0" onClick={() => navigate('/login')}>
+                    Sign in here
+                  </Button>
+                </p>
+              </div>
+
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => navigate('/')}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Home
+              </Button>
             </div>
 
             <Alert className="mt-6">
