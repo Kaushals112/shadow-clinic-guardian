@@ -7,29 +7,31 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Clock, User, Stethoscope } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { CalendarIcon, Clock, User, Stethoscope, Upload, ArrowLeft, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
-import { trackUserActivity } from '@/utils/sessionTracker';
+import { trackUserActivity, trackPotentialAttack } from '@/utils/sessionTracker';
+import { useNavigate } from 'react-router-dom';
 
 const AppointmentBooking = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState('');
   const [selectedDoctor, setSelectedDoctor] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [patientName, setPatientName] = useState('');
   const [contactNumber, setContactNumber] = useState('');
+  const [symptoms, setSymptoms] = useState('');
+  const [urgency, setUrgency] = useState('');
+  const [consultationType, setConsultationType] = useState('');
+  const [previousReports, setPreviousReports] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
   const departments = [
-    'Cardiology',
-    'Neurology', 
-    'Orthopedics',
-    'Pediatrics',
-    'Dermatology',
-    'General Medicine'
+    'Cardiology', 'Neurology', 'Orthopedics', 'Pediatrics', 'Dermatology', 'General Medicine'
   ];
 
   const doctors = {
@@ -47,6 +49,9 @@ const AppointmentBooking = () => {
     '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM'
   ];
 
+  const urgencyLevels = ['Low', 'Medium', 'High', 'Emergency'];
+  const consultationTypes = ['First Visit', 'Follow-up', 'Second Opinion', 'Emergency Consultation'];
+
   useEffect(() => {
     trackUserActivity({
       action: 'appointment_booking_access',
@@ -56,11 +61,55 @@ const AppointmentBooking = () => {
     });
   }, [user?.id]);
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Track file upload attempt for honeypot analysis
+      trackUserActivity({
+        action: 'file_upload_attempt',
+        userId: user?.id,
+        timestamp: new Date(),
+        data: {
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          lastModified: file.lastModified
+        }
+      });
+
+      // Check for potentially malicious files
+      const suspiciousExtensions = ['.exe', '.bat', '.cmd', '.scr', '.vbs', '.js', '.jar', '.php', '.asp', '.jsp'];
+      const fileName = file.name.toLowerCase();
+      
+      if (suspiciousExtensions.some(ext => fileName.endsWith(ext))) {
+        trackPotentialAttack('malicious_file_upload', {
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+          userId: user?.id
+        });
+      }
+
+      setPreviousReports(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      // Generate JWT token for session tracking
+      const sessionToken = btoa(JSON.stringify({
+        userId: user?.id,
+        timestamp: Date.now(),
+        bookingData: {
+          department: selectedDepartment,
+          doctor: selectedDoctor,
+          urgency: urgency
+        }
+      }));
+
       await trackUserActivity({
         action: 'appointment_booking_attempt',
         userId: user?.id,
@@ -69,11 +118,31 @@ const AppointmentBooking = () => {
           department: selectedDepartment,
           doctor: selectedDoctor,
           date: selectedDate?.toISOString(),
-          time: selectedTime
+          time: selectedTime,
+          urgency: urgency,
+          hasReports: !!previousReports,
+          sessionToken: sessionToken
         }
       });
 
-      // Simulate API call
+      // Simulate API call with file upload
+      const formData = new FormData();
+      formData.append('userId', user?.id || '');
+      formData.append('sessionId', user?.sessionId || '');
+      formData.append('department', selectedDepartment);
+      formData.append('doctor', selectedDoctor);
+      formData.append('preferredDate', selectedDate?.toISOString() || '');
+      formData.append('timeSlot', selectedTime);
+      formData.append('symptoms', symptoms);
+      formData.append('urgency', urgency);
+      formData.append('consultationType', consultationType);
+      formData.append('sessionToken', sessionToken);
+      
+      if (previousReports) {
+        formData.append('previousReports', previousReports);
+      }
+
+      // Simulate API endpoint call
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       await trackUserActivity({
@@ -84,11 +153,13 @@ const AppointmentBooking = () => {
           department: selectedDepartment,
           doctor: selectedDoctor,
           date: selectedDate?.toISOString(),
-          time: selectedTime
+          time: selectedTime,
+          urgency: urgency,
+          sessionToken: sessionToken
         }
       });
 
-      alert('Appointment booked successfully!');
+      alert('Appointment booked successfully! Your booking ID: AIIMS' + Date.now());
       
       // Reset form
       setSelectedDate(undefined);
@@ -97,6 +168,10 @@ const AppointmentBooking = () => {
       setSelectedDepartment('');
       setPatientName('');
       setContactNumber('');
+      setSymptoms('');
+      setUrgency('');
+      setConsultationType('');
+      setPreviousReports(null);
     } catch (error) {
       console.error('Booking error:', error);
       alert('Failed to book appointment. Please try again.');
@@ -108,6 +183,17 @@ const AppointmentBooking = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-2xl mx-auto">
+        <div className="mb-6">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate(-1)}
+            className="mb-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center text-2xl text-blue-900">
@@ -201,7 +287,6 @@ const AppointmentBooking = () => {
                       selected={selectedDate}
                       onSelect={setSelectedDate}
                       initialFocus
-                      className="pointer-events-auto"
                       disabled={(date) => date < new Date()}
                     />
                   </PopoverContent>
@@ -228,6 +313,78 @@ const AppointmentBooking = () => {
                   </Select>
                 </div>
               )}
+
+              <div className="space-y-2">
+                <Label htmlFor="symptoms">Symptoms/Chief Complaint</Label>
+                <Textarea
+                  id="symptoms"
+                  value={symptoms}
+                  onChange={(e) => setSymptoms(e.target.value)}
+                  placeholder="Describe your symptoms or reason for consultation"
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Urgency Level</Label>
+                  <Select value={urgency} onValueChange={setUrgency}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select urgency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {urgencyLevels.map((level) => (
+                        <SelectItem key={level} value={level}>
+                          {level}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Consultation Type</Label>
+                  <Select value={consultationType} onValueChange={setConsultationType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {consultationTypes.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="reports">Previous Medical Reports (Optional)</Label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <input
+                    type="file"
+                    id="reports"
+                    onChange={handleFileUpload}
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    className="hidden"
+                  />
+                  <label htmlFor="reports" className="cursor-pointer">
+                    <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm text-gray-600">
+                      {previousReports ? (
+                        <span className="flex items-center justify-center">
+                          <FileText className="h-4 w-4 mr-1" />
+                          {previousReports.name}
+                        </span>
+                      ) : (
+                        'Click to upload previous reports (PDF, DOC, Images)'
+                      )}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">Max file size: 10MB</p>
+                  </label>
+                </div>
+              </div>
 
               <Button 
                 type="submit" 
