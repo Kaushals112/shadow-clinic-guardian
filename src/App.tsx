@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -18,7 +19,6 @@ import AdminDashboard from "./components/Admin/AdminDashboard";
 import HoneypotTestGuide from "./components/HoneypotTestGuide";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/Auth/ProtectedRoute";
-import AdminLogin from "./components/Admin/AdminLogin";
 
 const queryClient = new QueryClient();
 
@@ -50,11 +50,7 @@ const App: React.FC = () => {
               <Route path="/contact" element={<Contact />} />
               <Route path="/login" element={<LoginForm />} />
               <Route path="/register" element={<RegisterForm />} />
-              <Route path="/admin/login" element={
-                <ProtectedRoute>
-                  <AdminLogin />
-                </ProtectedRoute>
-              } />
+              <Route path="/admin/login" element={<LoginForm />} />
               <Route path="/appointments" element={
                 <ProtectedRoute>
                   <AppointmentBooking />
